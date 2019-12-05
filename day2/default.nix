@@ -9,7 +9,9 @@ let
     mem = fromJSON ("[" + readFile ./input + "]");
   };
 
-  fix1202 = { mem, ... }: { mem = write 2 2 (write 12 1 mem); };
+  fix1202 = { noun ? 12, verb ? 2, mem, ... }: {
+    mem = write verb 2 (write noun 1 mem);
+  };
 
   read = n: xs: elemAt xs n;
   write = e: n: xs: (lists.take n xs) ++ [ e ] ++ (lists.drop (n + 1) xs);
@@ -28,7 +30,7 @@ let
           "p${toString (i - 1)}" = lists.elemAt mem (pc + i);
         } else
           { };
-    in opMap."${toString op}" (vm // lp 1 // lp 2 // lp 3);
+    in opMap.${toString op} (vm // lp 1 // lp 2 // lp 3);
 
   binOp = f:
     { pc, p0, p1, p2, mem }:
@@ -46,4 +48,24 @@ let
     halt = { pc, mem, ... }: { inherit pc mem; };
   };
 
-in { answer = { one = fixedPoints.converge load (vm // fix1202 vm); }; }
+  inputs = lists.crossLists (noun: verb: { inherit noun verb; }) [
+    (lists.range 0 99)
+    (lists.range 0 99)
+  ];
+
+  run = args:
+    let vm' = fixedPoints.converge load (vm // fix1202 (vm // args));
+    in { result = lists.elemAt vm'.mem 0; } // args;
+
+in {
+  answer = {
+    one = (run {
+      noun = 12;
+      verb = 2;
+    }).result;
+    two = let
+      result = lists.findFirst (x: x.result == 19690720) (abort "impossible")
+        (map run inputs);
+    in 100 * result.noun + result.verb;
+  };
+}
