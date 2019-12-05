@@ -6,13 +6,10 @@ let
   # "YoU cAn'T jUsT pArSe sHiT bY uSiNg jSoN fOr eVeRyThInG"
   vm = {
     pc = 0;
-    program = fromJSON ("[" + readFile ./input + "]");
+    mem = fromJSON ("[" + readFile ./input + "]");
   };
 
-  fix1202 = v@{ program, ... }:
-    v // {
-      program = write 2 2 (write 12 1 program);
-    };
+  fix1202 = { mem, ... }: { mem = write 2 2 (write 12 1 mem); };
 
   read = n: xs: elemAt xs n;
   write = e: n: xs: (lists.take n xs) ++ [ e ] ++ (lists.drop (n + 1) xs);
@@ -23,36 +20,30 @@ let
     "99" = ops.halt;
   };
 
-  load = { pc ? 0, program }:
+  load = vm@{ pc ? 0, mem }:
     let
-      op = lists.elemAt program (0 + pc);
-      r0 = lists.elemAt program (1 + pc);
-      r1 = lists.elemAt program (2 + pc);
-      s = lists.elemAt program (3 + pc);
-      program' = opMap."${toString op}" r0 r1 s program;
-    in if op == 99 then {
-      inherit pc program;
-    } else {
+      op = lists.elemAt mem pc;
+      lp = i:
+        if length mem >= i then {
+          "p${toString (i - 1)}" = lists.elemAt mem (pc + i);
+        } else
+          { };
+    in opMap."${toString op}" (vm // lp 1 // lp 2 // lp 3);
+
+  binOp = f:
+    { pc, p0, p1, p2, mem }:
+    let
+      a1 = read p0 mem;
+      a2 = read p1 mem;
+    in {
       pc = pc + 4;
-      program = program';
+      mem = write (f a1 a2) p2 mem;
     };
 
   ops = {
-    add = r0: r1: s: xs:
-      let
-        a = read r0 xs;
-        b = read r1 xs;
-        xs' = write (a + b) s xs;
-      in xs';
-
-    mult = r0: r1: s: xs:
-      let
-        a = read r0 xs;
-        b = read r1 xs;
-        xs' = write (a * b) s xs;
-      in xs';
-
-    halt = a: a;
+    add = binOp (a: b: a + b);
+    mult = binOp (a: b: a * b);
+    halt = { pc, mem, ... }: { inherit pc mem; };
   };
 
-in { answer = { one = fixedPoints.converge load (fix1202 vm); }; }
+in { answer = { one = fixedPoints.converge load (vm // fix1202 vm); }; }
