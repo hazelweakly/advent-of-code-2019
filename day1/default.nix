@@ -1,6 +1,6 @@
-{ pkgs ? <nixpkgs>, lib ? import "${pkgs}/lib", strings ? lib.strings
-, fixedPoints ? lib.fixedPoints }:
+{ pkgs ? import <nixpkgs> { } }:
 with builtins;
+with pkgs.lib;
 let
   floor = n: bitOr n 0;
 
